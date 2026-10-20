@@ -33,3 +33,5 @@ O nome do Worker no arquivo `wrangler.jsonc` já está alinhado com `checklist-s
 - Pede a senha em cada sessão do navegador. A senha não é incluída nos arquivos do site.
 
 Use a tabela já criada e preenchida no Neon. Não habilite a Data API pública do Neon para este projeto.
+
+Implantação conectada ao Cloudflare
