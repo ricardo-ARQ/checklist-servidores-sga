@@ -167,6 +167,11 @@ function download(content, filename, type) {
 const importDialog = $('#import-dialog');
 $('#import').addEventListener('click', () => importDialog.showModal());
 $('#close-import').addEventListener('click', () => importDialog.close());
+$('#choose-import-file').addEventListener('click', () => {
+  const input = $('#import-file');
+  input.value = '';
+  input.click();
+});
 $('#template-download').addEventListener('click', () => download('\uFEFFNome;Categoria\r\n;\r\n', 'modelo_importacao_servidores.csv', 'text/csv;charset=utf-8'));
 $('#import-file').addEventListener('change', async event => {
   const file = event.target.files[0]; if (!file) return;
