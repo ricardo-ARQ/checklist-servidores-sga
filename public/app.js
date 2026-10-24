@@ -2,6 +2,7 @@ const categories = ['docentes', 'tecnicos', 'terceirizados'];
 const labels = { docentes: 'Docentes', tecnicos: 'Técnicos', terceirizados: 'Terceirizados' };
 let people = [];
 let filter = 'todos';
+let showMarkedOnly = false;
 let undoAction = null;
 let selectedCategory = 'docentes';
 let busy = false;
@@ -41,12 +42,15 @@ async function loadRoster(silent = false) {
 function render() {
   const lists = $('#lists');
   lists.replaceChildren();
+  const scopedCategories = filter === 'todos' ? categories : [filter];
+  const scopedPeople = people.filter(person => scopedCategories.includes(person.categoria));
   let visible = 0;
-  let marked = 0;
-  for (const category of categories) {
-    if (filter !== 'todos' && filter !== category) continue;
+  const marked = scopedPeople.filter(person => person.marcado).length;
+  for (const category of scopedCategories) {
     const entries = people.filter(person => person.categoria === category);
     if (!entries.length) continue;
+    const displayedEntries = showMarkedOnly ? entries.filter(person => person.marcado) : entries;
+    if (!displayedEntries.length) continue;
     const section = document.createElement('section');
     const heading = document.createElement('h2');
     heading.className = 'group-title';
@@ -55,14 +59,13 @@ function render() {
     section.append(heading);
     const list = document.createElement('div');
     list.className = 'list';
-    const unchecked = entries.filter(person => !person.marcado);
+    const unchecked = showMarkedOnly ? [] : entries.filter(person => !person.marcado);
     const checked = entries.filter(person => person.marcado);
     for (const [index, person] of [...unchecked, ...checked].entries()) {
       if (index === unchecked.length && checked.length && unchecked.length) {
         const divider = document.createElement('hr'); divider.className = 'selection-divider'; divider.setAttribute('aria-hidden', 'true'); list.append(divider);
       }
       visible++;
-      if (person.marcado) marked++;
       const row = document.createElement('label'); row.className = 'item';
       const box = document.createElement('input'); box.type = 'checkbox'; box.checked = person.marcado;
       box.addEventListener('change', async () => {
@@ -84,9 +87,12 @@ function render() {
     }
     section.append(list); lists.append(section);
   }
-  if (!visible) lists.innerHTML = '<div class="empty">Nenhum servidor nesta categoria.</div>';
-  $('#total').textContent = String(visible).padStart(2, '0');
+  if (!visible) lists.innerHTML = `<div class="empty">${showMarkedOnly ? 'Nenhum servidor marcado nesta categoria.' : 'Nenhum servidor nesta categoria.'}</div>`;
+  $('#total').textContent = `${visible} / ${scopedPeople.length}`;
   $('#done').textContent = String(marked).padStart(2, '0');
+  $('#marked-toggle').setAttribute('aria-pressed', String(showMarkedOnly));
+  $('#marked-toggle').setAttribute('aria-label', showMarkedOnly ? 'Mostrar todos os servidores' : 'Mostrar apenas servidores marcados');
+  $('#marked-toggle').title = showMarkedOnly ? 'Mostrar todos' : 'Mostrar apenas os marcados';
   status.textContent = `${people.length} servidores · sincronização automática`;
 }
 
@@ -114,6 +120,10 @@ document.querySelectorAll('.tab').forEach(button => button.addEventListener('cli
   document.querySelectorAll('.tab').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
   render();
 }));
+$('#marked-toggle').addEventListener('click', () => {
+  showMarkedOnly = !showMarkedOnly;
+  render();
+});
 
 const dialog = $('#dialog');
 document.querySelectorAll('.category-choice').forEach(button => button.addEventListener('click', () => {
@@ -127,7 +137,7 @@ $('#add-form').addEventListener('submit', async event => {
   const nome = $('#person-name').value.trim();
   try {
     await api('/api/servidores', { method: 'POST', body: JSON.stringify({ nome, categoria: selectedCategory }) });
-    dialog.close(); event.target.reset(); filter = selectedCategory;
+    dialog.close(); event.target.reset(); filter = selectedCategory; showMarkedOnly = false;
     document.querySelectorAll('.tab').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.filter === filter)));
     await loadRoster(true);
     const added = people.find(person => person.nome.toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR') && person.categoria === selectedCategory);
@@ -229,3 +239,4 @@ applyTheme();
 const savedPassword = sessionStorage.getItem(storageKey);
 if (savedPassword) enter(savedPassword);
 setInterval(() => { if (!app.classList.contains('hidden')) loadRoster(true); }, 12000);
+
